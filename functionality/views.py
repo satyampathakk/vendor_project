@@ -8,8 +8,35 @@ from django.http import Http404
 from django.utils import timezone
 from django.http import HttpResponse
 from .utils import calculate_vendor_performance_metrics
+from rest_framework_simplejwt.tokens import RefreshToken
 
+class CustomAuthTokenView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request,vendor_code, *args, **kwargs):
+        
+        if not vendor_code:
+            return Response({'error': 'Vendor code is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            vendor = Vendor.objects.get(vendor_code=vendor_code)
+        except Vendor.DoesNotExist:
+            return Response({'error': 'Vendor with provided vendor code does not exist'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(vendor)
+        access = refresh.access_token
+
+        return Response({
+            'access': str(access),
+            'refresh': str(refresh),
+            'vendor_id': vendor.id
+        })
+    
 class VendorList(APIView):
+    authentication_classes=[]
+    permission_classes=[]
     def get(self, request):
         vendors = Vendor.objects.all()
         serializer = VendorSerializer(vendors, many=True)
